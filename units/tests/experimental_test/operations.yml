@@ -1,8 +1,15 @@
 ---
-add-disabled-syslog-agent-for-upgrade.yml:
-  ops:
-  - add-disabled-syslog-agent-for-upgrade.yml
+add-cflinuxfs4.yml: {}
 add-metric-store.yml: {}
+add-otel-collector-windows.yml:
+  ops:
+  - ../windows2019-cell.yml
+  - add-otel-collector.yml
+  varsfiles:
+  - example-vars-files/vars-override-otel-collector-exporters.yml
+add-otel-collector.yml:
+  varsfiles:
+  - example-vars-files/vars-override-otel-collector-exporters.yml
 add-system-metrics-agent-windows2019.yml:
   ops:
   - ../windows2019-cell.yml
@@ -10,6 +17,7 @@ add-system-metrics-agent-windows2019.yml:
   - add-system-metrics-agent-windows2019.yml
 add-system-metrics-agent.yml: {}
 colocate-smoke-tests-on-cc-worker.yml: {}
+disable-cf-credhub.yml: {}
 disable-interpolate-service-bindings.yml: {}
 disable-logs-in-firehose.yml: {}
 disable-logs-in-firehose-windows2019.yml:
@@ -37,7 +45,6 @@ enable-nginx-routing-integrity-windows2019.yml:
   - ../windows2019-cell.yml
   - enable-nginx-routing-integrity-windows2019.yml
 enable-oci-phase-1.yml: {}
-enable-smb-volume-service.yml: {}
 enable-tls-cloud-controller-postgres.yml:
   ops:
   - ../use-postgres.yml
@@ -46,23 +53,35 @@ enable-traffic-to-internal-networks.yml: {}
 fast-deploy-with-downtime-and-danger.yml: {}
 infrastructure-metrics.yml: {}
 rootless-containers.yml: {}
+set-cflinuxfs4-default-stack.yml:
+  ops:
+  - ./add-cflinuxfs4.yml
 set-cpu-weight-windows2019.yml:
   ops:
   - ../windows2019-cell.yml
 set-cpu-weight.yml: {}
-use-bionic-stemcell.yml: {}
 use-compiled-releases-windows.yml:
   ops:
   - ../use-compiled-releases.yml
   - ../windows2019-cell.yml
   - use-compiled-releases-windows.yml
 use-create-swap-delete-vm-strategy.yml: {}
-use-logcache-syslog-ingress-windows2019.yml:
+use-native-garden-runc-runner.yml: {}
+use-trusted-ca-cert-for-apps-cflinuxfs4.yml:
+  ops:
+    - add-cflinuxfs4.yml
+  varsfiles:
+    - ../example-vars-files/vars-use-trusted-ca-cert-for-apps.yml
+use-mysql-version-8.0.yml:
+  pathvalidator:
+    path: /instance_groups/name=database/jobs/name=pxc-mysql/properties/mysql_version?
+    expectedvalue: "8.0"
+disable-tls-tcp-routing-windows-stage-1-unproxied-ports.yml:
   ops:
   - ../windows2019-cell.yml
-  - use-logcache-syslog-ingress.yml
-  - use-logcache-syslog-ingress-windows2019.yml
-use-logcache-syslog-ingress.yml:
+  - enable-nginx-routing-integrity-windows2019.yml
+disable-tls-tcp-routing-windows-stage-2-route-emitter.yml:
   ops:
-  - use-logcache-syslog-ingress.yml
-use-native-garden-runc-runner.yml: {}
+  - ../windows2019-cell.yml
+  - enable-nginx-routing-integrity-windows2019.yml
+  - disable-tls-tcp-routing-windows-stage-1-unproxied-ports.yml

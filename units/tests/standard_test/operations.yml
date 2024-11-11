@@ -1,4 +1,6 @@
 ---
+add-persistent-isolation-segment-diego-cell.yml: {}
+add-persistent-isolation-segment-router.yml: {}
 aws.yml: {}
 azure.yml: {}
 bosh-lite.yml: {}
@@ -7,10 +9,16 @@ configure-default-router-group.yml:
   - default_router_group_reservable_ports=1234-2024
 disable-router-tls-termination.yml: {}
 disable-http2.yml: {}
+disable-dynamic-asgs.yml: {}
 enable-cc-rate-limiting.yml:
   vars:
   - cc_rate_limiter_general_limit=blah
   - cc_rate_limiter_unauthenticated_limit=something
+enable-cc-v2-rate-limiting.yml:
+  vars:
+  - cc_v2_rate_limiter_general_limit=blah
+  - cc_v2_rate_limiter_admin_limit=something
+  - cc_v2_rate_limiter_reset_interval_in_minutes=else
 enable-cpu-throttling.yml: {}
 enable-nfs-ldap.yml:
   ops:
@@ -41,6 +49,13 @@ set-router-static-ips.yml:
   vars:
   - router_static_ips=[10.0.16.4,10.0.47.5]
 stop-skipping-tls-validation.yml: {}
+use-absolute-cpu-entitlement-persistent-isolation-segment.yml:
+  ops:
+  - add-persistent-isolation-segment-diego-cell.yml
+use-absolute-cpu-entitlement-windows2019.yml:
+  ops:
+  - windows2019-cell.yml
+use-absolute-cpu-entitlement.yml: {}
 use-alicloud-oss-blobstore-to-multi-bucket.yml:
   ops:
   - use-external-blobstore.yml
@@ -62,7 +77,9 @@ use-azure-storage-blobstore.yml:
 use-blobstore-cdn.yml:
   varsfiles:
   - example-vars-files/vars-use-blobstore-cdn.yml
-use-compiled-releases.yml: {}
+use-compiled-releases.yml:
+  ops:
+   - use-compiled-releases.yml
 use-external-blobstore.yml:
   varsfiles:
   - example-vars-files/vars-use-external-blobstore.yml
@@ -135,3 +152,17 @@ use-trusted-ca-cert-for-apps.yml:
   varsfiles:
   - example-vars-files/vars-use-trusted-ca-cert-for-apps.yml
 windows2019-cell.yml: {}
+use-cflinuxfs4-compat.yml:
+  ops:
+    - use-cflinuxfs4-compat.yml
+disable-tls-tcp-routing-isolation-segment-stage-1-unproxied-ports.yml:
+  ops:
+  - add-persistent-isolation-segment-diego-cell.yml
+disable-tls-tcp-routing-isolation-segment-stage-2-route-emitter.yml:
+  ops:
+  - add-persistent-isolation-segment-diego-cell.yml
+  - disable-tls-tcp-routing-isolation-segment-stage-1-unproxied-ports.yml
+disable-tls-tcp-routing-stage-1-unproxied-ports.yml: {}
+disable-tls-tcp-routing-stage-2-tcp-router-and-route-emitter.yml:
+  ops:
+  - disable-tls-tcp-routing-stage-1-unproxied-ports.yml

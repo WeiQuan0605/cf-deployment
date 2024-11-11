@@ -31,10 +31,16 @@ groups:
   - bbr-deploy
   - bbr-run-drats
   - bbr-delete-deployment
-  - windows-claim-env
+  - windows-acquire-pool
   - windows-deploy
+  - windows-smoke-tests
   - windows-cats
-  - windows-unclaim-env
+  - windows-delete-deployment
+  - fips-acquire-pool
+  - fips-deploy
+  - fips-smoke-tests
+  - fips-cats
+  - fips-delete-deployment
   - bless-manifest
   - ship-it-patch
   - ship-it-minor
@@ -104,17 +110,32 @@ groups:
   - bbr-delete-deployment
   - bbr-release-pool-manual
   - bless-manifest
-- name: windows
+- name: windows-cedric
   jobs:
   - unit-test-ops-files
   - unit-test-golang-tests
   - unit-test-update-releases-coverage
   - lint-cf-deployment-manifest
-  - windows-claim-env
+  - windows-acquire-pool
+  - windows-release-pool-manual
   - windows-deploy
+  - windows-smoke-tests
   - windows-cats
-  - windows-unclaim-env
+  - windows-delete-deployment
   - bless-manifest
+- name: fips-snape
+  jobs:
+    - unit-test-ops-files
+    - unit-test-golang-tests
+    - unit-test-update-releases-coverage
+    - lint-cf-deployment-manifest
+    - fips-acquire-pool
+    - fips-release-pool-manual
+    - fips-deploy
+    - fips-smoke-tests
+    - fips-cats
+    - fips-delete-deployment
+    - bless-manifest
 - name: ship-it
   jobs:
   - ship-it-patch
@@ -128,15 +149,17 @@ resource_types:
   source:
     repository: ljfranklin/terraform-resource
 
-- name: toolsmiths-cf-pool
-  type: docker-image
-  source:
-    repository: cftoolsmiths/toolsmiths-envs-resource
-
 - name: bosh-deployment-v2
   type: docker-image
   source:
     repository: cloudfoundry/bosh-deployment-resource
+
+# TODO remove this resource type declaration when a final release of the resource is available
+- name: bosh-io-stemcell
+  source:
+    repository: concourse/bosh-io-stemcell-resource
+    tag: 1.3.0
+  type: docker-image
 
 resources:
 - name: fresh-pool
@@ -146,7 +169,7 @@ resources:
     uri: git@github.com:cloudfoundry/relint-ci-pools
     branch: main
     pool: cf-deployment/fresh
-    private_key: ((relint_ci_pools_readwrite_deploy_key.private_key))
+    private_key: ((ard_wg_gitbot_ssh_key.private_key))
 
 - name: upgrade-pool
   type: pool
@@ -155,7 +178,7 @@ resources:
     uri: git@github.com:cloudfoundry/relint-ci-pools
     branch: main
     pool: cf-deployment/upgrade
-    private_key: ((relint_ci_pools_readwrite_deploy_key.private_key))
+    private_key: ((ard_wg_gitbot_ssh_key.private_key))
 
 - name: experimental-pool
   type: pool
@@ -164,7 +187,7 @@ resources:
     uri: git@github.com:cloudfoundry/relint-ci-pools
     branch: main
     pool: cf-deployment/experimental
-    private_key: ((relint_ci_pools_readwrite_deploy_key.private_key))
+    private_key: ((ard_wg_gitbot_ssh_key.private_key))
 
 - name: lite-pool
   type: pool
@@ -173,7 +196,7 @@ resources:
     uri: git@github.com:cloudfoundry/relint-ci-pools
     branch: main
     pool: cf-deployment/lite
-    private_key: ((relint_ci_pools_readwrite_deploy_key.private_key))
+    private_key: ((ard_wg_gitbot_ssh_key.private_key))
 
 - name: bbr-pool
   type: pool
@@ -182,7 +205,34 @@ resources:
     uri: git@github.com:cloudfoundry/relint-ci-pools
     branch: main
     pool: bbr
-    private_key: ((relint_ci_pools_readwrite_deploy_key.private_key))
+    private_key: ((ard_wg_gitbot_ssh_key.private_key))
+
+- name: windows-pool
+  type: pool
+  icon: pool
+  source:
+    uri: git@github.com:cloudfoundry/relint-ci-pools
+    branch: main
+    pool: cf-deployment/windows
+    private_key: ((ard_wg_gitbot_ssh_key.private_key))
+
+- name: fips-pool
+  type: pool
+  icon: pool
+  source:
+    uri: git@github.com:cloudfoundry/relint-ci-pools
+    branch: main
+    pool: cf-deployment/fips
+    private_key: ((ard_wg_gitbot_ssh_key.private_key))
+
+- name: fips-stemcell
+  type: bosh-io-stemcell
+  icon: dna
+  source:
+    name: bosh-aws-xen-hvm-ubuntu-jammy-fips-go_agent
+    auth:
+      access_key: ((ci_dev_gcp_service_account_hmac_access_key))
+      secret_key: ((ci_dev_gcp_service_account_hmac_secret))
 
 - name: relint-envs
   type: git
@@ -190,7 +240,7 @@ resources:
   source:
     branch: main
     uri: git@github.com:cloudfoundry/relint-envs.git
-    private_key: ((hagrid_env_readwrite_deploy_key.private_key))
+    private_key: ((ard_wg_gitbot_ssh_key.private_key))
 
 - name: daily
   type: time
@@ -224,7 +274,7 @@ resources:
   source:
     branch: develop
     uri: git@github.com:cloudfoundry/cf-deployment.git
-    private_key: ((cf_deployment_readwrite_deploy_key.private_key))
+    private_key: ((ard_wg_gitbot_ssh_key.private_key))
     ignore_paths:
     - .envrc
     - .overcommit.yml
@@ -239,7 +289,7 @@ resources:
   source:
     branch: release-candidate
     uri: git@github.com:cloudfoundry/cf-deployment.git
-    private_key: ((cf_deployment_readwrite_deploy_key.private_key))
+    private_key: ((ard_wg_gitbot_ssh_key.private_key))
     ignore_paths:
     - .envrc
     - .overcommit.yml
@@ -254,7 +304,7 @@ resources:
   source:
     branch: main
     uri: git@github.com:cloudfoundry/cf-deployment.git
-    private_key: ((cf_deployment_readwrite_deploy_key.private_key))
+    private_key: ((ard_wg_gitbot_ssh_key.private_key))
     ignore_paths:
     - .envrc
     - .overcommit.yml
@@ -282,8 +332,7 @@ resources:
   icon: github
   source:
     branch: release-candidate
-    uri: git@github.com:cloudfoundry/cf-acceptance-tests.git
-    private_key: ((cf_acceptance_tests_readwrite_deploy_key.private_key))
+    uri: https://github.com/cloudfoundry/cf-acceptance-tests.git
 
 - name: cf-smoke-tests
   type: git
@@ -304,29 +353,22 @@ resources:
     driver: git
     uri: git@github.com:cloudfoundry/cf-relint-ci-semver.git
     branch: main
-    private_key: ((cf_relint_ci_semver_readwrite_deploy_key.private_key))
-    git_user: "CF MEGA BOT <cf-mega@pivotal.io>"
+    private_key: ((ard_wg_gitbot_ssh_key.private_key))
     file: cf-deployment-version
-
-- name: deliver-tracker-story
-  type: tracker
-  source:
-    token: ((cf_relint_tracker_api_token))
-    project_id: "1382120"
-    tracker_url: https://www.pivotaltracker.com
 
 - name: disaster-recovery-acceptance-tests
   type: git
   icon: github
   source:
-    uri: https://github.com/cloudfoundry-incubator/disaster-recovery-acceptance-tests.git
+    uri: https://github.com/cloudfoundry/disaster-recovery-acceptance-tests.git
 
 - name: bbr-github-release
   type: github-release
   icon: github
   source:
-    owner: cloudfoundry-incubator
+    owner: cloudfoundry
     repository: bosh-backup-and-restore
+  check_every: 5m
 
 - name: trelawney-external-resources
   type: terraform
@@ -336,13 +378,6 @@ resources:
       bucket: trelawney-upgrade-external-resource-state
       credentials: ((trelawney_gcp_service_account_json))
     env_name: trelawney
-
-- name: toolsmiths-windows-env
-  type: toolsmiths-cf-pool
-  source:
-    api_token: ((toolsmiths_api_token))
-    hostname: environments.toolsmiths.cf-app.com
-    pool_name: cf-deployment
 
 jobs:
 - name: unit-test-ops-files
@@ -382,6 +417,9 @@ jobs:
     params:
       DAYS_LEFT_THRESHOLD: 16
       PATH_TO_VERIFY: relint-envs
+      PATHS_TO_IGNORE:
+        - environments/ci/concourse/bbl-state/vars
+        - environments/dev/cdutra-plan-patch-dev/certs
 
 - name: unit-test-golang-tests
   serial: true
@@ -403,6 +441,9 @@ jobs:
       run:
         dir: cf-deployment-develop/units
         path: ./test
+        args:
+        - -timeout
+        - 1h
 
 - name: unit-test-update-releases-coverage
   serial: true
@@ -516,6 +557,9 @@ jobs:
       NEW_OPS_FILES: |
         environments/test/luna/rename-isolation-segment-network.yml
         environments/test/luna/change-postgres-max-connections.yml
+        environments/test/luna/smoke-tests-timeout-scale.yml
+        environments/test/luna/use-operator-provided-router-tls-certificate.yml
+        environments/test/luna/change-deployment-name-for-nfs-test-server.yml
   - task: bosh-deploy-cf
     file: cf-deployment-concourse-tasks/bosh-deploy/task.yml
     input_mapping:
@@ -525,33 +569,37 @@ jobs:
       vars-files: relint-envs
     params:
       BBL_STATE_DIR: environments/test/luna/bbl-state
-      SYSTEM_DOMAIN: luna.cf-app.com
+      SYSTEM_DOMAIN: cf.luna.env.wg-ard.ci.cloudfoundry.org
+      BOSHENV_iso_seg_tls_cert: ((luna-iso_lb))
+      BOSH_DEPLOY_ARGS: "--vars-env=BOSHENV"
       OPS_FILES: |
         operations/rename-network-and-deployment.yml
         operations/set-bbs-active-key.yml
-        operations/test/add-persistent-isolation-segment-diego-cell.yml
-        operations/test/add-persistent-isolation-segment-router.yml
+        operations/add-persistent-isolation-segment-diego-cell.yml
+        operations/test/use-cflinuxfs4-compat-isolation-segment-diego-cell.yml
+        operations/add-persistent-isolation-segment-router.yml
         operations/rename-isolation-segment-network.yml
         operations/addons/enable-component-syslog.yml
+        operations/addons/add-system-metrics-agent.yml
         operations/use-postgres.yml
         operations/experimental/enable-tls-cloud-controller-postgres.yml
         operations/change-postgres-max-connections.yml
         operations/use-internal-lookup-for-route-services.yml
         operations/enable-tls-on-file-server.yml
+        operations/test/speed-up-dynamic-asgs.yml
+        operations/use-cflinuxfs4-compat.yml
+        operations/smoke-tests-timeout-scale.yml
+        operations/stop-skipping-tls-validation.yml
+        operations/use-operator-provided-router-tls-certificate.yml
+        operations/enable-nfs-volume-service.yml
+        operations/test/enable-nfs-test-server.yml
+        operations/change-deployment-name-for-nfs-test-server.yml
       VARS_FILES: |
         environments/test/luna/deployment-name.yml
         environments/test/luna/network-name.yml
         environments/test/luna/bbs-key-label.yml
         environments/test/luna/syslog-vars.yml
       REGENERATE_CREDENTIALS: true
-  - task: ensure-gcloud-backend-service-healthy
-    file: runtime-ci/tasks/ensure-gcloud-backend-service-healthy/task.yml
-    input_mapping:
-      google-creds-dir: relint-envs
-    params:
-      GCP_PROJECT_ID: ((luna_gcp_project))
-      GCP_BACKEND_SERVICE: ((luna_router_backend_service))
-      GOOGLE_ACCOUNT_CREDS_PATH: environments/test/luna/google_account_creds.json
   - task: update-integration-configs
     file: cf-deployment-concourse-tasks/update-integration-configs/task.yml
     params:
@@ -583,7 +631,7 @@ jobs:
         BBL_STATE_DIR: environments/test/luna/bbl-state
         BOSH_DEPLOYMENT: luna-cf
         INSTANCE_GROUP_NAME: credhub
-        SYSTEM_DOMAIN: luna.cf-app.com
+        SYSTEM_DOMAIN: cf.luna.env.wg-ard.ci.cloudfoundry.org
         SECURITY_GROUP_NAME: credhub
     - task: open-asgs-for-uaa
       file: cf-deployment-concourse-tasks/open-asgs-for-bosh-instance-group/task.yml
@@ -593,7 +641,7 @@ jobs:
         BBL_STATE_DIR: environments/test/luna/bbl-state
         BOSH_DEPLOYMENT: luna-cf
         INSTANCE_GROUP_NAME: uaa
-        SYSTEM_DOMAIN: luna.cf-app.com
+        SYSTEM_DOMAIN: cf.luna.env.wg-ard.ci.cloudfoundry.org
         SECURITY_GROUP_NAME: uaa
     - task: enable-docker-and-tasks
       attempts: 2
@@ -602,10 +650,19 @@ jobs:
         bbl-state: relint-envs
       params:
         BBL_STATE_DIR: environments/test/luna/bbl-state
-        SYSTEM_DOMAIN: luna.cf-app.com
+        SYSTEM_DOMAIN: cf.luna.env.wg-ard.ci.cloudfoundry.org
         ENABLED_FEATURE_FLAGS: |
+          diego_cnb
           diego_docker
           task_creation
+    - task: run-nfs-broker-push-errand
+      file: cf-deployment-concourse-tasks/run-errand/task.yml
+      input_mapping:
+        bbl-state: relint-envs
+      params:
+        BBL_STATE_DIR: environments/test/luna/bbl-state
+        DEPLOYMENT_NAME: luna-cf
+        ERRAND_NAME: nfs-broker-push
 
 - name: fresh-smoke-tests
   public: true
@@ -660,9 +717,10 @@ jobs:
         cf-acceptance-tests: cf-acceptance-tests-rc
       params:
         CONFIG_FILE_PATH: environments/test/luna/integration_config.json
-        REPORTER_CONFIG_FILE_PATH: environments/test/luna/reporter_config.json
         CAPTURE_LOGS: true
         RELINT_VERBOSE_AUTH: "true"
+        SKIP_REGEXP: "shows logs and metrics"
+        NODES: 12
 
 - name: fresh-delete-deployment
   serial: true
@@ -747,6 +805,8 @@ jobs:
       bbl-state: relint-envs
     params:
       BBL_STATE_DIR: environments/test/trelawney/bbl-state
+      GCP_PROJECT_ID: cf-deployments-wg
+      GCP_REGION: europe-west3
       GCP_SERVICE_ACCOUNT_JSON: ((trelawney_gcp_service_account_json))
   - try:
       put: trelawney-external-resources
@@ -772,7 +832,6 @@ jobs:
       BASE_OPS_FILE_DIR: operations
       NEW_OPS_FILES: |
         environments/test/trelawney/add-external-ips-for-cloud-sql-db.yml
-        environments/test/trelawney/increase-doppler-vm-type-from-minimal-to-small.yml
         environments/test/trelawney/scale-log-api-to-4.yml
   - task: setup-external-ip-db-vars
     file: runtime-ci/tasks/generate-external-ip-db-vars/task.yml
@@ -784,6 +843,7 @@ jobs:
       BBL_STATE_DIR: environments/test/trelawney/bbl-state
       VARS_DIR: environments/test/trelawney
   - task: bosh-deploy-cf-latest-release
+    attempts: 2
     file: cf-deployment-concourse-tasks/bosh-deploy/task.yml
     input_mapping:
       bbl-state: relint-envs
@@ -792,17 +852,18 @@ jobs:
       vars-files: updated-bbl-state-with-db-vars
     params:
       BBL_STATE_DIR: environments/test/trelawney/bbl-state
-      SYSTEM_DOMAIN: trelawney.cf-app.com
+      SYSTEM_DOMAIN: cf.trelawney.env.wg-ard.ci.cloudfoundry.org
       OPS_FILES: |
         operations/use-compiled-releases.yml
         operations/use-external-dbs.yml
         operations/add-external-ips-for-cloud-sql-db.yml
         operations/experimental/colocate-smoke-tests-on-cc-worker.yml
+        operations/set-cpu-weight.yml
+        operations/enable-cpu-throttling.yml
         operations/use-external-blobstore.yml
         operations/use-gcs-blobstore-service-account.yml
         operations/enable-service-discovery.yml
-        operations/test/add-persistent-isolation-segment-diego-cell.yml
-        operations/increase-doppler-vm-type-from-minimal-to-small.yml
+        operations/add-persistent-isolation-segment-diego-cell.yml
         operations/scale-log-api-to-4.yml
         operations/use-internal-lookup-for-route-services.yml
       VARS_FILES: |
@@ -825,7 +886,7 @@ jobs:
       bbl-state: relint-envs
     params:
       BBL_STATE_DIR: environments/test/trelawney/bbl-state
-      SYSTEM_DOMAIN: trelawney.cf-app.com
+      SYSTEM_DOMAIN: cf.trelawney.env.wg-ard.ci.cloudfoundry.org
   - task: collect-ops-files-develop
     file: cf-deployment-concourse-tasks/collect-ops-files/task.yml
     input_mapping:
@@ -835,9 +896,9 @@ jobs:
       BASE_OPS_FILE_DIR: operations
       NEW_OPS_FILES: |
         environments/test/trelawney/add-external-ips-for-cloud-sql-db.yml
-        environments/test/trelawney/increase-doppler-vm-type-from-minimal-to-small.yml
         environments/test/trelawney/scale-log-api-to-4.yml
   - task: bosh-deploy-cf-develop
+    attempts: 1
     file: cf-deployment-concourse-tasks/bosh-deploy/task.yml
     input_mapping:
       bbl-state: relint-envs
@@ -846,19 +907,21 @@ jobs:
       vars-files: updated-bbl-state-with-db-vars
     params:
       BBL_STATE_DIR: environments/test/trelawney/bbl-state
-      SYSTEM_DOMAIN: trelawney.cf-app.com
+      SYSTEM_DOMAIN: cf.trelawney.env.wg-ard.ci.cloudfoundry.org
       OPS_FILES: |
         operations/use-compiled-releases.yml
         operations/use-external-dbs.yml
         operations/add-external-ips-for-cloud-sql-db.yml
         operations/experimental/colocate-smoke-tests-on-cc-worker.yml
+        operations/set-cpu-weight.yml
+        operations/enable-cpu-throttling.yml
         operations/use-external-blobstore.yml
         operations/use-gcs-blobstore-service-account.yml
         operations/enable-service-discovery.yml
-        operations/test/add-persistent-isolation-segment-diego-cell.yml
-        operations/increase-doppler-vm-type-from-minimal-to-small.yml
+        operations/add-persistent-isolation-segment-diego-cell.yml
         operations/scale-log-api-to-4.yml
         operations/use-internal-lookup-for-route-services.yml
+        operations/test/speed-up-dynamic-asgs.yml
       VARS_FILES: |
         environments/test/trelawney/external-db-vars.yml
         environments/test/trelawney/external-public-ip-vars.yml
@@ -870,6 +933,7 @@ jobs:
       APP_PUSHABILITY_THRESHOLD: 10
       RECENT_LOGS_THRESHOLD: 10000
       STREAMING_LOGS_THRESHOLD: 10000
+      APP_STATS_THRESHOLD: 10
   - in_parallel:
     - task: open-asgs-for-credhub
       file: cf-deployment-concourse-tasks/open-asgs-for-bosh-instance-group/task.yml
@@ -878,7 +942,7 @@ jobs:
       params:
         BBL_STATE_DIR: environments/test/trelawney/bbl-state
         INSTANCE_GROUP_NAME: credhub
-        SYSTEM_DOMAIN: trelawney.cf-app.com
+        SYSTEM_DOMAIN: cf.trelawney.env.wg-ard.ci.cloudfoundry.org
         SECURITY_GROUP_NAME: credhub
     - task: open-asgs-for-uaa
       file: cf-deployment-concourse-tasks/open-asgs-for-bosh-instance-group/task.yml
@@ -887,7 +951,7 @@ jobs:
       params:
         BBL_STATE_DIR: environments/test/trelawney/bbl-state
         INSTANCE_GROUP_NAME: uaa
-        SYSTEM_DOMAIN: trelawney.cf-app.com
+        SYSTEM_DOMAIN: cf.trelawney.env.wg-ard.ci.cloudfoundry.org
         SECURITY_GROUP_NAME: uaa
     - task: enable-docker-and-tasks
       file: cf-deployment-concourse-tasks/set-feature-flags/task.yml
@@ -895,7 +959,7 @@ jobs:
         bbl-state: relint-envs
       params:
         BBL_STATE_DIR: environments/test/trelawney/bbl-state
-        SYSTEM_DOMAIN: trelawney.cf-app.com
+        SYSTEM_DOMAIN: cf.trelawney.env.wg-ard.ci.cloudfoundry.org
         ENABLED_FEATURE_FLAGS: |
           diego_docker
           task_creation
@@ -954,7 +1018,6 @@ jobs:
         cf-acceptance-tests: cf-acceptance-tests-rc
       params:
         CONFIG_FILE_PATH: environments/test/trelawney/integration_config.json
-        REPORTER_CONFIG_FILE_PATH: environments/test/trelawney/reporter_config.json
         CAPTURE_LOGS: true
         RELINT_VERBOSE_AUTH: "true"
 
@@ -989,6 +1052,8 @@ jobs:
       bbl-state: relint-envs
     params:
       BBL_STATE_DIR: environments/test/trelawney/bbl-state
+      GCP_PROJECT_ID: cf-deployments-wg
+      GCP_REGION: europe-west3
       GCP_SERVICE_ACCOUNT_JSON: ((trelawney_gcp_service_account_json))
   - put: trelawney-external-resources
     params:
@@ -1056,7 +1121,9 @@ jobs:
       BASE_OPS_FILE_DIR: operations
       NEW_OPS_FILES: |
         environments/test/hermione/increase-doppler-vm-type-from-minimal-to-small.yml
+        environments/test/hermione/scale-diego-cell-to-8.yml
   - task: bosh-deploy-cf-latest-release
+    attempts: 2
     file: cf-deployment-concourse-tasks/bosh-deploy/task.yml
     input_mapping:
       bbl-state: relint-envs
@@ -1065,7 +1132,7 @@ jobs:
       vars-files: relint-envs
     params:
       BBL_STATE_DIR: environments/test/hermione/bbl-state
-      SYSTEM_DOMAIN: hermione.cf-app.com
+      SYSTEM_DOMAIN: cf.hermione.env.wg-ard.ci.cloudfoundry.org
       OPS_FILES: |
         operations/aws.yml
         operations/use-compiled-releases.yml
@@ -1075,12 +1142,13 @@ jobs:
         operations/stop-skipping-tls-validation.yml
         operations/use-operator-provided-router-tls-certificates.yml
         operations/experimental/colocate-smoke-tests-on-cc-worker.yml
-        operations/experimental/enable-iptables-logger.yml
-        operations/experimental/set-cpu-weight.yml
-        operations/experimental/enable-cpu-throttling.yml
+        operations/experimental/enable-oci-phase-1.yml
         operations/experimental/enable-containerd-for-processes.yml
-        operations/experimental/use-logcache-syslog-ingress.yml
+        operations/experimental/disable-cf-credhub.yml
+        operations/experimental/disable-interpolate-service-bindings.yml
         operations/increase-doppler-vm-type-from-minimal-to-small.yml
+        operations/scale-diego-cell-to-8.yml
+        operations/test/speed-up-dynamic-asgs.yml
       VARS_FILES: |
         environments/test/hermione/bbl-state/vars/director-vars-file.yml
         environments/test/hermione/vars-use-operator-provided-router-tls-certificates.yml
@@ -1099,7 +1167,7 @@ jobs:
       bbl-state: relint-envs
     params:
       BBL_STATE_DIR: environments/test/hermione/bbl-state
-      SYSTEM_DOMAIN: hermione.cf-app.com
+      SYSTEM_DOMAIN: cf.hermione.env.wg-ard.ci.cloudfoundry.org
   - task: collect-ops-files-develop
     file: cf-deployment-concourse-tasks/collect-ops-files/task.yml
     input_mapping:
@@ -1109,7 +1177,9 @@ jobs:
       BASE_OPS_FILE_DIR: operations
       NEW_OPS_FILES: |
         environments/test/hermione/increase-doppler-vm-type-from-minimal-to-small.yml
+        environments/test/hermione/scale-diego-cell-to-8.yml
   - task: bosh-deploy-cf-develop
+    attempts: 1
     file: cf-deployment-concourse-tasks/bosh-deploy/task.yml
     input_mapping:
       bbl-state: relint-envs
@@ -1118,7 +1188,7 @@ jobs:
       vars-files: relint-envs
     params:
       BBL_STATE_DIR: environments/test/hermione/bbl-state
-      SYSTEM_DOMAIN: hermione.cf-app.com
+      SYSTEM_DOMAIN: cf.hermione.env.wg-ard.ci.cloudfoundry.org
       OPS_FILES: |
         operations/aws.yml
         operations/use-compiled-releases.yml
@@ -1128,13 +1198,15 @@ jobs:
         operations/stop-skipping-tls-validation.yml
         operations/use-operator-provided-router-tls-certificates.yml
         operations/experimental/colocate-smoke-tests-on-cc-worker.yml
-        operations/experimental/enable-iptables-logger.yml
-        operations/experimental/set-cpu-weight.yml
-        operations/experimental/enable-cpu-throttling.yml
         operations/experimental/enable-oci-phase-1.yml
         operations/experimental/enable-containerd-for-processes.yml
-        operations/experimental/use-logcache-syslog-ingress.yml
+        operations/experimental/disable-cf-credhub.yml
+        operations/experimental/disable-interpolate-service-bindings.yml
+        operations/experimental/disable-v2-api.yml
+        operations/experimental/use-mysql-version-8.0.yml
         operations/increase-doppler-vm-type-from-minimal-to-small.yml
+        operations/scale-diego-cell-to-8.yml
+        operations/test/speed-up-dynamic-asgs.yml
       VARS_FILES: |
         environments/test/hermione/bbl-state/vars/director-vars-file.yml
         environments/test/hermione/vars-use-operator-provided-router-tls-certificates.yml
@@ -1144,16 +1216,8 @@ jobs:
       APP_PUSHABILITY_THRESHOLD: 10
       RECENT_LOGS_THRESHOLD: 10000
       STREAMING_LOGS_THRESHOLD: 10000
+      APP_STATS_THRESHOLD: 10
   - in_parallel:
-    - task: open-asgs-for-credhub
-      file: cf-deployment-concourse-tasks/open-asgs-for-bosh-instance-group/task.yml
-      input_mapping:
-        bbl-state: relint-envs
-      params:
-        BBL_STATE_DIR: environments/test/hermione/bbl-state
-        INSTANCE_GROUP_NAME: credhub
-        SYSTEM_DOMAIN: hermione.cf-app.com
-        SECURITY_GROUP_NAME: credhub
     - task: open-asgs-for-uaa
       file: cf-deployment-concourse-tasks/open-asgs-for-bosh-instance-group/task.yml
       input_mapping:
@@ -1161,7 +1225,7 @@ jobs:
       params:
         BBL_STATE_DIR: environments/test/hermione/bbl-state
         INSTANCE_GROUP_NAME: uaa
-        SYSTEM_DOMAIN: hermione.cf-app.com
+        SYSTEM_DOMAIN: cf.hermione.env.wg-ard.ci.cloudfoundry.org
         SECURITY_GROUP_NAME: uaa
     - task: set-feature-flags
       file: cf-deployment-concourse-tasks/set-feature-flags/task.yml
@@ -1169,7 +1233,7 @@ jobs:
         bbl-state: relint-envs
       params:
         BBL_STATE_DIR: environments/test/hermione/bbl-state
-        SYSTEM_DOMAIN: hermione.cf-app.com
+        SYSTEM_DOMAIN: cf.hermione.env.wg-ard.ci.cloudfoundry.org
         ENABLED_FEATURE_FLAGS: |
           diego_docker
           task_creation
@@ -1183,8 +1247,13 @@ jobs:
       trigger: true
       passed: [ experimental-acquire-pool ]
     - get: runtime-ci
+    - get: cf-deployment-main
   - task: experimental-ops-files
     file: runtime-ci/tasks/summarize-ops-files/task.yml
+    input_mapping:
+      cf-deployment: cf-deployment-main
+    params:
+      TASK_LIST: "bosh-deploy-cf-latest-release bosh-deploy-cf-develop"
 
 - name: experimental-smoke-tests
   public: true
@@ -1337,7 +1406,7 @@ jobs:
         vars-files: relint-envs
       params:
         BBL_STATE_DIR: environments/test/snitch/bbl-state
-        SYSTEM_DOMAIN: snitch.cf-app.com
+        SYSTEM_DOMAIN: cf.snitch.env.wg-ard.ci.cloudfoundry.org
         OPS_FILES: |
           operations/use-compiled-releases.yml
           operations/scale-to-one-az.yml
@@ -1415,14 +1484,15 @@ jobs:
     - task: update-infrastructure
       file: cf-deployment-concourse-tasks/bbl-up/task.yml
       params:
-        BBL_STATE_DIR: environments/test/snitch/bbl-state
-        BBL_IAAS: gcp
-        BBL_GCP_SERVICE_ACCOUNT_KEY: environments/test/snitch/google_account_creds.json
-        BBL_GCP_REGION: us-central1
-        BBL_ENV_NAME: snitch-lite
-        SKIP_LB_CREATION: true
         BBL_CONFIG_DIR: .
-        BBL_RECREATE_DIRECTOR: true
+        BBL_ENV_NAME: snitch-lite
+        BBL_GCP_REGION: europe-west3
+        BBL_GCP_SERVICE_ACCOUNT_KEY: environments/test/snitch/snitch-lite.key.json
+        BBL_IAAS: gcp
+        BBL_STATE_DIR: environments/test/snitch/bbl-state
+        GIT_COMMIT_EMAIL: "app-deployments@cloudfoundry.org"
+        GIT_COMMIT_USERNAME: "ARD WG Bot"
+        SKIP_LB_CREATION: true
       input_mapping:
         bbl-state: relint-envs
         bbl-config: combined-inputs
@@ -1472,6 +1542,13 @@ jobs:
     - get: cf-deployment-concourse-tasks
     - get: runtime-ci
     - get: relint-envs
+  - task: guarantee-no-existing-cf-deployment
+    file: cf-deployment-concourse-tasks/bosh-delete-deployment/task.yml
+    input_mapping:
+      bbl-state: relint-envs
+    params:
+      BBL_STATE_DIR: environments/test/bbr/bbl-state
+      IGNORE_ERRORS: true
   - task: bosh-deploy-cf
     file: cf-deployment-concourse-tasks/bosh-deploy/task.yml
     input_mapping:
@@ -1481,12 +1558,14 @@ jobs:
       vars-files: relint-envs
     params:
       BBL_STATE_DIR: environments/test/bbr/bbl-state
-      SYSTEM_DOMAIN: baba-yaga.cf-app.com
+      SYSTEM_DOMAIN: cf.baba-yaga.env.wg-ard.ci.cloudfoundry.org
       OPS_FILES: |
         operations/use-compiled-releases.yml
         operations/backup-and-restore/enable-backup-restore.yml
         operations/enable-nfs-volume-service.yml
         operations/backup-and-restore/enable-restore-nfs-broker.yml
+        operations/enable-smb-volume-service.yml
+        operations/backup-and-restore/enable-restore-smb-broker.yml
       REGENERATE_CREDENTIALS: true
   - in_parallel:
     - task: enable-docker
@@ -1496,7 +1575,7 @@ jobs:
         bbl-state: relint-envs
       params:
         BBL_STATE_DIR: environments/test/bbr/bbl-state
-        SYSTEM_DOMAIN: baba-yaga.cf-app.com
+        SYSTEM_DOMAIN: cf.baba-yaga.env.wg-ard.ci.cloudfoundry.org
         ENABLED_FEATURE_FLAGS: |
           diego_docker
     - task: open-asgs-for-credhub
@@ -1506,7 +1585,7 @@ jobs:
       params:
         BBL_STATE_DIR: environments/test/bbr/bbl-state
         INSTANCE_GROUP_NAME: credhub
-        SYSTEM_DOMAIN: baba-yaga.cf-app.com
+        SYSTEM_DOMAIN: cf.baba-yaga.env.wg-ard.ci.cloudfoundry.org
         SECURITY_GROUP_NAME: credhub
     - task: open-asgs-for-uaa
       file: cf-deployment-concourse-tasks/open-asgs-for-bosh-instance-group/task.yml
@@ -1515,15 +1594,23 @@ jobs:
       params:
         BBL_STATE_DIR: environments/test/bbr/bbl-state
         INSTANCE_GROUP_NAME: uaa
-        SYSTEM_DOMAIN: baba-yaga.cf-app.com
+        SYSTEM_DOMAIN: cf.baba-yaga.env.wg-ard.ci.cloudfoundry.org
         SECURITY_GROUP_NAME: uaa
-    - task: run-nfs-broker-push-errand
-      file: cf-deployment-concourse-tasks/run-errand/task.yml
-      input_mapping:
-        bbl-state: relint-envs
-      params:
-        BBL_STATE_DIR: environments/test/bbr/bbl-state
-        ERRAND_NAME: nfs-broker-push
+    - do:
+      - task: run-nfs-broker-push-errand
+        file: cf-deployment-concourse-tasks/run-errand/task.yml
+        input_mapping:
+          bbl-state: relint-envs
+        params:
+          BBL_STATE_DIR: environments/test/bbr/bbl-state
+          ERRAND_NAME: nfs-broker-push
+      - task: run-smb-broker-push-errand
+        file: cf-deployment-concourse-tasks/run-errand/task.yml
+        input_mapping:
+          bbl-state: relint-envs
+        params:
+          BBL_STATE_DIR: environments/test/bbr/bbl-state
+          ERRAND_NAME: smb-broker-push
     - task: run-bosh-cleanup
       file: cf-deployment-concourse-tasks/bosh-cleanup/task.yml
       input_mapping:
@@ -1552,7 +1639,7 @@ jobs:
       bbl-state: relint-envs
     params:
       BBL_STATE_DIR: environments/test/bbr/bbl-state
-      SYSTEM_DOMAIN: baba-yaga.cf-app.com
+      SYSTEM_DOMAIN: cf.baba-yaga.env.wg-ard.ci.cloudfoundry.org
   - task: run-drats
     privileged: true
     file: disaster-recovery-acceptance-tests/ci/tasks/drats-with-integration-config/task.yml
@@ -1585,14 +1672,11 @@ jobs:
   - put: bbr-pool
     params: {release: bbr-pool}
 
-- name: windows-claim-env
+- name: windows-acquire-pool
+  public: true
   serial: true
-  #public: true
   plan:
   - in_parallel:
-    - put: toolsmiths-windows-env
-      params:
-        action: claim
     - get: cf-deployment-develop
       trigger: true
       passed:
@@ -1600,38 +1684,47 @@ jobs:
       - lint-cf-deployment-manifest
       - unit-test-golang-tests
       - unit-test-update-releases-coverage
+    - put: windows-pool
+      params: {acquire: true}
     timeout: 4h
 
+- name: windows-release-pool-manual
+  public: true
+  plan:
+  - get: windows-pool
+  ensure:
+    try:
+      put: windows-pool
+      params: {release: windows-pool}
+
 - name: windows-deploy
-  #public: true
-  serial_groups: [ windows-cats ]
+  public: true
+  serial_groups: [ windows-smokes, windows-cats ]
   plan:
   - in_parallel:
-    - get: toolsmiths-windows-env
-      passed:
-      - windows-claim-env
+    - get: windows-pool
+      passed: [windows-acquire-pool]
       trigger: true
     - get: cf-deployment-concourse-tasks
+    - get: relint-envs
     - get: cf-deployment-develop
-      passed:
-      - windows-claim-env
-  - task: bosh-delete-cf-deployment
+      passed: [windows-acquire-pool]
+  - task: guarantee-no-existing-cf-deployment
     file: cf-deployment-concourse-tasks/bosh-delete-deployment/task.yml
     input_mapping:
-      toolsmiths-env: toolsmiths-windows-env
+      bbl-state: relint-envs
     params:
+      BBL_STATE_DIR: environments/test/cedric/bbl-state
       IGNORE_ERRORS: true
-  - task: bosh-cleanup
-    file: cf-deployment-concourse-tasks/bosh-cleanup/task.yml
-    input_mapping:
-      toolsmiths-env: toolsmiths-windows-env
   - task: bosh-deploy-cf-develop
     file: cf-deployment-concourse-tasks/bosh-deploy/task.yml
     input_mapping:
-      toolsmiths-env: toolsmiths-windows-env
+      bbl-state: relint-envs
       cf-deployment: cf-deployment-develop
       ops-files: cf-deployment-develop
     params:
+      BBL_STATE_DIR: environments/test/cedric/bbl-state
+      SYSTEM_DOMAIN: cf.cedric.env.wg-ard.ci.cloudfoundry.org
       OPS_FILES: |
         operations/use-compiled-releases.yml
         operations/windows2019-cell.yml
@@ -1639,37 +1732,69 @@ jobs:
         operations/experimental/use-compiled-releases-windows.yml
         operations/use-internal-lookup-for-route-services.yml
         operations/experimental/colocate-smoke-tests-on-cc-worker.yml
+        operations/addons/add-system-metrics-agent.yml
+        operations/addons/add-system-metrics-agent-windows2019.yml
+      REGENERATE_CREDENTIALS: true
   - in_parallel:
     - task: open-asgs-for-credhub
       file: cf-deployment-concourse-tasks/open-asgs-for-bosh-instance-group/task.yml
       input_mapping:
-        toolsmiths-env: toolsmiths-windows-env
+        bbl-state: relint-envs
       params:
+        BBL_STATE_DIR: environments/test/cedric/bbl-state
+        SYSTEM_DOMAIN: cf.cedric.env.wg-ard.ci.cloudfoundry.org
         INSTANCE_GROUP_NAME: credhub
         SECURITY_GROUP_NAME: credhub
     - task: open-asgs-for-uaa
       file: cf-deployment-concourse-tasks/open-asgs-for-bosh-instance-group/task.yml
       input_mapping:
-        toolsmiths-env: toolsmiths-windows-env
+        bbl-state: relint-envs
       params:
+        BBL_STATE_DIR: environments/test/cedric/bbl-state
+        SYSTEM_DOMAIN: cf.cedric.env.wg-ard.ci.cloudfoundry.org
         INSTANCE_GROUP_NAME: uaa
         SECURITY_GROUP_NAME: uaa
     - task: enable-docker-and-tasks
       file: cf-deployment-concourse-tasks/set-feature-flags/task.yml
       input_mapping:
-        toolsmiths-env: toolsmiths-windows-env
+        bbl-state: relint-envs
       params:
+        BBL_STATE_DIR: environments/test/cedric/bbl-state
+        SYSTEM_DOMAIN: cf.cedric.env.wg-ard.ci.cloudfoundry.org
         ENABLED_FEATURE_FLAGS: |
           diego_docker
           task_creation
           service_instance_sharing
 
+- name: windows-smoke-tests
+  public: true
+  serial_groups: [ windows-smokes ]
+  plan:
+  - do:
+    - get: windows-pool
+      passed: [ windows-deploy ]
+      trigger: true
+    - in_parallel:
+      - get: relint-envs
+      - get: cf-deployment-develop
+        passed: [ windows-deploy ]
+      - get: cf-deployment-concourse-tasks
+    timeout: 1h
+  - task: bosh-run-errand-smoke-tests
+    file: cf-deployment-concourse-tasks/run-errand/task.yml
+    input_mapping:
+      bbl-state: relint-envs
+    params:
+      BBL_STATE_DIR: environments/test/cedric/bbl-state
+      ERRAND_NAME: smoke_tests
+      INSTANCE: cc-worker/first
+
 - name: windows-cats
-  #public: true
+  public: true
   serial_groups: [ windows-cats ]
   plan:
   - in_parallel:
-    - get: toolsmiths-windows-env
+    - get: windows-pool
       passed:
       - windows-deploy
       trigger: true
@@ -1681,11 +1806,12 @@ jobs:
     - get: relint-envs
   - task: update-integration-config
     file: cf-deployment-concourse-tasks/update-integration-configs/task.yml
-    params:
-      CATS_INTEGRATION_CONFIG_FILE: environments/test/trelawney/cats_windows_integration_config.json
     input_mapping:
-      toolsmiths-env: toolsmiths-windows-env
+      bbl-state: relint-envs
       integration-configs: relint-envs
+    params:
+      BBL_STATE_DIR: environments/test/cedric/bbl-state
+      CATS_INTEGRATION_CONFIG_FILE: environments/test/cedric/integration_config.json
   - task: run-cats
     file: cf-deployment-concourse-tasks/run-cats/task.yml
     input_mapping:
@@ -1693,20 +1819,298 @@ jobs:
       cf-acceptance-tests: cf-acceptance-tests-rc
     params:
       CAPTURE_LOGS: true
-      CONFIG_FILE_PATH: environments/test/trelawney/cats_windows_integration_config.json
+      CONFIG_FILE_PATH: environments/test/cedric/integration_config.json
+      NODES: 5
 
-- name: windows-unclaim-env
+- name: windows-delete-deployment
   serial: true
-  #public: true
+  public: true
   plan:
-  - get: toolsmiths-windows-env
-    passed:
-    - windows-cats
-    trigger: true
-  - put: toolsmiths-windows-env
-    params:
-      action: unclaim
-      env_file: toolsmiths-windows-env/metadata
+  - timeout: 4h
+    do:
+    - get: windows-pool
+      trigger: true
+      passed:
+      - windows-cats
+      - windows-smoke-tests
+    - in_parallel:
+      - get: cf-deployment-concourse-tasks
+      - get: relint-envs
+    - task: delete-deployment-cf
+      file: cf-deployment-concourse-tasks/bosh-delete-deployment/task.yml
+      input_mapping:
+        bbl-state: relint-envs
+      params:
+        BBL_STATE_DIR: environments/test/cedric/bbl-state
+        IGNORE_ERRORS: true
+    - task: run-bosh-cleanup
+      file: cf-deployment-concourse-tasks/bosh-cleanup/task.yml
+      input_mapping:
+        bbl-state: relint-envs
+      params:
+        BBL_STATE_DIR: environments/test/cedric/bbl-state
+    - put: windows-pool
+      params: {release: windows-pool}
+
+- name: fips-acquire-pool
+  serial: true
+  public: true
+  plan:
+    - in_parallel:
+        - get: cf-deployment-develop
+          trigger: true
+          passed:
+            - unit-test-ops-files
+            - lint-cf-deployment-manifest
+            - unit-test-golang-tests
+            - unit-test-update-releases-coverage
+        - put: fips-pool
+          params: { acquire: true }
+      timeout: 4h
+
+- name: fips-release-pool-manual
+  public: true
+  plan:
+    - get: fips-pool
+  ensure:
+    try:
+      put: fips-pool
+      params: {release: fips-pool}
+
+- name: fips-deploy
+  serial_groups: [ fips-cats, fips-smokes ]
+  public: true
+  plan:
+    - get: fips-pool
+      trigger: true
+      passed: [fips-acquire-pool]
+    - in_parallel:
+        - get: cf-deployment-develop
+          passed: [fips-acquire-pool]
+        - get: fips-stemcell
+        - get: cf-deployment-concourse-tasks
+        - get: runtime-ci
+        - get: relint-envs
+        - get: cf-smoke-tests
+    - task: check-stemcell-version
+      config:
+        platform: linux
+        image_resource:
+          type: docker-image
+          source:
+            repository: cloudfoundry/cf-deployment-concourse-tasks
+        inputs:
+          - name: fips-stemcell
+          - name: cf-deployment-develop
+        run:
+          path: bash
+          dir: ""
+          args:
+            - -c
+            - |
+              #!/bin/bash
+              version_from_stemcell_resource="$(cat fips-stemcell/version)"
+              version_from_ops="$(yq -r '.[0].value.version' < cf-deployment-develop/operations/test/fips-stemcell.yml)"
+              if [ "$version_from_stemcell_resource" = "$version_from_ops" ]; then
+                echo "Version ${version_from_stemcell_resource} from stemcell resource matches version from ops file. Proceeding."
+              else
+                echo "Version ${version_from_stemcell_resource} from stemcell resource differs from version ${version_from_ops} from ops file."
+                echo "This can happen if two stemcell versions are released at short intervals. Wait until the \"update-releases\" pipeline finishes. Aborting."
+                exit 1
+              fi
+    - task: guarantee-no-existing-cf-deployment
+      file: cf-deployment-concourse-tasks/bosh-delete-deployment/task.yml
+      input_mapping:
+        bbl-state: relint-envs
+      params:
+        BBL_STATE_DIR: environments/test/snape/bbl-state
+        IGNORE_ERRORS: true
+    - task: bosh-cleanup
+      file: cf-deployment-concourse-tasks/bosh-cleanup/task.yml
+      input_mapping:
+        bbl-state: relint-envs
+      params:
+        BBL_STATE_DIR: environments/test/snape/bbl-state
+    # existing upload-stemcell tasks don't work as they are trying to upload the stemcell from the given (protected) URL
+    # instead, we must upload the stemcell from the local file of the "fips-stemcell" resource
+    - task: upload-fips-stemcell
+      config:
+        platform: linux
+        image_resource:
+          type: docker-image
+          source:
+            repository: cloudfoundry/cf-deployment-concourse-tasks
+        inputs:
+          - name: cf-deployment-concourse-tasks
+          - name: fips-stemcell
+          - name: relint-envs
+        params:
+          BBL_STATE_DIR: environments/test/snape/bbl-state
+        run:
+          path: bash
+          dir: ""
+          args:
+            - -c
+            - |
+              #!/bin/bash
+              source cf-deployment-concourse-tasks/shared-functions
+              ln -s relint-envs bbl-state
+              setup_bosh_env_vars
+              bosh upload-stemcell ./fips-stemcell/stemcell.tgz
+    - task: bosh-deploy-cf
+      file: cf-deployment-concourse-tasks/bosh-deploy/task.yml
+      input_mapping:
+        bbl-state: relint-envs
+        cf-deployment: cf-deployment-develop
+        ops-files: cf-deployment-develop
+        vars-files: relint-envs
+      params:
+        BBL_STATE_DIR: environments/test/snape/bbl-state
+        SYSTEM_DOMAIN: cf.snape.env.wg-ard.ci.cloudfoundry.org
+        OPS_FILES: |
+          operations/aws.yml
+          operations/addons/enable-component-syslog.yml
+          operations/addons/add-system-metrics-agent.yml
+          operations/use-postgres.yml
+          operations/stop-skipping-tls-validation.yml
+          operations/experimental/enable-tls-cloud-controller-postgres.yml
+          operations/use-latest-stemcell.yml
+        VARS_FILES: |
+          environments/test/snape/syslog-vars.yml
+        REGENERATE_CREDENTIALS: true
+        SKIP_STEMCELL_UPLOAD: true
+    - task: update-integration-configs
+      file: cf-deployment-concourse-tasks/update-integration-configs/task.yml
+      params:
+        BBL_STATE_DIR: environments/test/snape/bbl-state
+        CATS_INTEGRATION_CONFIG_FILE: environments/test/snape/integration_config.json
+      input_mapping:
+        bbl-state: relint-envs
+        integration-configs: relint-envs
+    - in_parallel:
+        - task: ensure-api-healthy
+          file: runtime-ci/tasks/ensure-api-healthy/task.yml
+          input_mapping:
+            cats-integration-config: relint-envs
+          params:
+            CONFIG_FILE_PATH: environments/test/snape/integration_config.json
+    - in_parallel:
+        - task: open-asgs-for-credhub
+          file: cf-deployment-concourse-tasks/open-asgs-for-bosh-instance-group/task.yml
+          input_mapping:
+            bbl-state: relint-envs
+          params:
+            BBL_STATE_DIR: environments/test/snape/bbl-state
+            INSTANCE_GROUP_NAME: credhub
+            SYSTEM_DOMAIN: cf.snape.env.wg-ard.ci.cloudfoundry.org
+            SECURITY_GROUP_NAME: credhub
+        - task: open-asgs-for-uaa
+          file: cf-deployment-concourse-tasks/open-asgs-for-bosh-instance-group/task.yml
+          input_mapping:
+            bbl-state: relint-envs
+          params:
+            BBL_STATE_DIR: environments/test/snape/bbl-state
+            INSTANCE_GROUP_NAME: uaa
+            SYSTEM_DOMAIN: cf.snape.env.wg-ard.ci.cloudfoundry.org
+            SECURITY_GROUP_NAME: uaa
+        - task: enable-docker-and-tasks
+          attempts: 2
+          file: cf-deployment-concourse-tasks/set-feature-flags/task.yml
+          input_mapping:
+            bbl-state: relint-envs
+          params:
+            BBL_STATE_DIR: environments/test/snape/bbl-state
+            SYSTEM_DOMAIN: cf.snape.env.wg-ard.ci.cloudfoundry.org
+            ENABLED_FEATURE_FLAGS: |
+              diego_docker
+              task_creation
+              service_instance_sharing
+
+- name: fips-smoke-tests
+  public: true
+  serial_groups: [ fips-smokes ]
+  plan:
+    - do:
+        - get: fips-pool
+          passed: [ fips-deploy ]
+          trigger: true
+        - in_parallel:
+            - get: relint-envs
+            - get: cf-deployment-develop
+              passed: [ fips-deploy ]
+            - get: cf-deployment-concourse-tasks
+      timeout: 1h
+    - task: bosh-run-errand-smoke-tests
+      file: cf-deployment-concourse-tasks/run-errand/task.yml
+      params:
+        BBL_STATE_DIR: environments/test/snape/bbl-state
+        ERRAND_NAME: smoke_tests
+      input_mapping:
+        bbl-state: relint-envs
+
+- name: fips-cats
+  public: true
+  serial_groups: [ fips-cats ]
+  plan:
+    - timeout: 4h
+      do:
+        - get: fips-pool
+          trigger: true
+          passed: [ fips-deploy ]
+        - in_parallel:
+            - get: cf-deployment-concourse-tasks
+            - get: cf-acceptance-tests-rc
+            - get: relint-envs
+            - get: cf-deployment-develop
+              passed: [ fips-deploy ]
+        - task: update-integration-configs
+          file: cf-deployment-concourse-tasks/update-integration-configs/task.yml
+          params:
+            BBL_STATE_DIR: environments/test/snape/bbl-state
+            CATS_INTEGRATION_CONFIG_FILE: environments/test/snape/integration_config.json
+          input_mapping:
+            bbl-state: relint-envs
+            integration-configs: relint-envs
+        - task: run-cats
+          file: cf-deployment-concourse-tasks/run-cats/task.yml
+          input_mapping:
+            integration-config: updated-integration-configs
+            cf-acceptance-tests: cf-acceptance-tests-rc
+          params:
+            CONFIG_FILE_PATH: environments/test/snape/integration_config.json
+            CAPTURE_LOGS: true
+            RELINT_VERBOSE_AUTH: "true"
+            NODES: 12
+
+- name: fips-delete-deployment
+  serial: true
+  public: true
+  plan:
+    - timeout: 4h
+      do:
+        - get: fips-pool
+          trigger: true
+          passed:
+            - fips-cats
+            - fips-smoke-tests
+        - in_parallel:
+            - get: cf-deployment-concourse-tasks
+            - get: relint-envs
+        - task: delete-deployment-cf
+          file: cf-deployment-concourse-tasks/bosh-delete-deployment/task.yml
+          input_mapping:
+            bbl-state: relint-envs
+          params:
+            BBL_STATE_DIR: environments/test/snape/bbl-state
+            IGNORE_ERRORS: true
+        - task: run-bosh-cleanup
+          file: cf-deployment-concourse-tasks/bosh-cleanup/task.yml
+          input_mapping:
+            bbl-state: relint-envs
+          params:
+            BBL_STATE_DIR: environments/test/snape/bbl-state
+        - put: fips-pool
+          params: {release: fips-pool}
 
 - name: bless-manifest
   public: true
@@ -1720,16 +2124,16 @@ jobs:
     - experimental-cats
     - experimental-smoke-tests
     - upgrade-cats
+    - upgrade-smoke-tests
     - bbr-run-drats
     - lite-smoke-tests
     - windows-cats
+    - windows-smoke-tests
+    - fips-cats
+    - fips-smoke-tests
   - put: cf-deployment-release-candidate
     params:
       repository: cf-deployment-develop
-  - put: deliver-tracker-story
-    params:
-      repos:
-        - cf-deployment-develop
 
 - name: ship-it-patch
   public: true

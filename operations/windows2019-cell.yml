@@ -1,41 +1,5 @@
-- path: /addons/name=metrics-discovery-windows2019?
-  type: replace
-  value:
-    include:
-      stemcell:
-      - os: windows2019
-    jobs:
-    - name: metrics-discovery-registrar-windows
-      properties:
-        metrics:
-          ca_cert: ((metrics_discovery_metrics_tls.ca))
-          cert: ((metrics_discovery_metrics_tls.certificate))
-          key: ((metrics_discovery_metrics_tls.private_key))
-          server_name: metrics_discovery_metrics
-        nats_client:
-          cert: ((nats_client_cert.certificate))
-          key: ((nats_client_cert.private_key))
-      release: metrics-discovery
-    - name: metrics-agent-windows
-      properties:
-        grpc:
-          ca_cert: ((loggregator_tls_agent.ca))
-          cert: ((loggregator_tls_agent.certificate))
-          key: ((loggregator_tls_agent.private_key))
-        metrics:
-          ca_cert: ((metrics_agent_tls.ca))
-          cert: ((metrics_agent_tls.certificate))
-          key: ((metrics_agent_tls.private_key))
-          server_name: metrics_agent
-        scrape:
-          tls:
-            ca_cert: ((prom_scraper_scrape_tls.ca))
-            cert: ((prom_scraper_scrape_tls.certificate))
-            key: ((prom_scraper_scrape_tls.private_key))
-      release: metrics-discovery
-    name: metrics-discovery-windows2019
-- path: /instance_groups/-
-  type: replace
+- type: replace
+  path: /instance_groups/-
   value:
     azs:
     - z1
@@ -87,7 +51,6 @@
           rep:
             open_bindmounts_acl: true
             preloaded_rootfses:
-            - windows2016:oci:///C:/var/vcap/packages/windows2019fs
             - windows:oci:///C:/var/vcap/packages/windows2019fs
         enable_consul_service_registration: false
         enable_declarative_healthcheck: true
@@ -95,6 +58,9 @@
           format:
             timestamp: rfc3339
         loggregator:
+          app_metric_exclusion_filter:
+          - absolute_entitlement
+          - absolute_usage
           ca_cert: ((loggregator_tls_agent.ca))
           cert: ((loggregator_tls_agent.certificate))
           key: ((loggregator_tls_agent.private_key))
@@ -106,12 +72,7 @@
           cert: ((diego_rep_agent_v2.certificate))
           key: ((diego_rep_agent_v2.private_key))
       release: diego
-    - consumes:
-        nats:
-          ip_addresses: false
-        nats-tls:
-          ip_addresses: false
-      name: route_emitter_windows
+    - name: route_emitter_windows
       properties:
         diego:
           route_emitter:
@@ -125,6 +86,8 @@
                 client_cert: ((nats_client_cert.certificate))
                 client_key: ((nats_client_cert.private_key))
                 enabled: true
+        internal_routes:
+          enabled: true
         logging:
           format:
             timestamp: rfc3339
@@ -133,6 +96,11 @@
           cert: ((loggregator_tls_agent.certificate))
           key: ((loggregator_tls_agent.private_key))
           use_v2_api: true
+        tcp:
+          enabled: true
+        uaa:
+          ca_cert: ((uaa_ssl.ca))
+          client_secret: ((uaa_clients_tcp_emitter_secret))
       release: diego
     - name: loggregator_agent_windows
       properties:
@@ -159,6 +127,7 @@
             cert: ((syslog_agent_api_tls.certificate))
             cn: binding-cache
             key: ((syslog_agent_api_tls.private_key))
+        drain_ca_cert: ((log_cache_syslog_tls.ca))
         metrics:
           ca_cert: ((syslog_agent_metrics_tls.ca))
           cert: ((syslog_agent_metrics_tls.certificate))
@@ -208,65 +177,50 @@
     vm_extensions:
     - 100GB_ephemeral_disk
     vm_type: small-highmem
-- path: /stemcells/-
-  type: replace
+- type: replace
+  path: /stemcells/-
   value:
     alias: windows2019
     os: windows2019
-    version: "2019.40"
-- path: /instance_groups/name=api/jobs/name=cloud_controller_ng/properties/cc/stacks/name=windows2016?
-  type: replace
-  value:
-    description: Windows Server 2016
-    name: windows2016
-- path: /instance_groups/name=api/jobs/name=cloud_controller_ng/properties/cc/stacks/name=windows?
-  type: replace
+    version: "2019.78"
+- type: replace
+  path: /instance_groups/name=api/jobs/name=cloud_controller_ng/properties/cc/stacks/name=windows?
   value:
     description: Windows Server
     name: windows
-- path: /instance_groups/name=api/jobs/name=cloud_controller_ng/properties/cc/install_buildpacks/package=hwc-buildpack-windows2016?
-  type: replace
-  value:
-    name: hwc_buildpack
-    package: hwc-buildpack-windows2016
-- path: /instance_groups/name=api/jobs/name=cloud_controller_ng/properties/cc/install_buildpacks/package=hwc-buildpack-windows?
-  type: replace
+- type: replace
+  path: /instance_groups/name=api/jobs/name=cloud_controller_ng/properties/cc/install_buildpacks/package=hwc-buildpack-windows?
   value:
     name: hwc_buildpack
     package: hwc-buildpack-windows
-- path: /instance_groups/name=api/jobs/name=hwc-buildpack?
-  type: replace
+- type: replace
+  path: /instance_groups/name=api/jobs/name=hwc-buildpack?
   value:
     name: hwc-buildpack
     release: hwc-buildpack
-- path: /instance_groups/name=api/jobs/name=cloud_controller_ng/properties/cc/install_buildpacks/package=binary-buildpack-windows2016?
-  type: replace
-  value:
-    name: binary_buildpack
-    package: binary-buildpack-windows2016
-- path: /instance_groups/name=api/jobs/name=cloud_controller_ng/properties/cc/install_buildpacks/package=binary-buildpack-windows?
-  type: replace
+- type: replace
+  path: /instance_groups/name=api/jobs/name=cloud_controller_ng/properties/cc/install_buildpacks/package=binary-buildpack-windows?
   value:
     name: binary_buildpack
     package: binary-buildpack-windows
-- path: /releases/name=hwc-buildpack?
-  type: replace
+- type: replace
+  path: /releases/name=hwc-buildpack?
   value:
     name: hwc-buildpack
-    sha1: d23998512071991a9b85470661b77f9be3d41bc8
-    url: https://bosh.io/d/github.com/cloudfoundry-incubator/hwc-buildpack-release?v=3.1.19
-    version: 3.1.19
-- path: /releases/name=winc?
-  type: replace
+    sha1: 2670d4971790f92b8ca6423c596acb50f4d31299
+    url: https://bosh.io/d/github.com/cloudfoundry-incubator/hwc-buildpack-release?v=3.1.40
+    version: 3.1.40
+- type: replace
+  path: /releases/name=winc?
   value:
     name: winc
-    sha1: 365690f87e7bea56a6eef15c92e0492165669d03
-    url: https://bosh.io/d/github.com/cloudfoundry-incubator/winc-release?v=2.3.0
-    version: 2.3.0
-- path: /releases/name=windows-utilities?
-  type: replace
+    sha1: 0b217a694f1b8b39112b14442befe20d17afad6c
+    url: https://bosh.io/d/github.com/cloudfoundry-incubator/winc-release?v=2.29.0
+    version: 2.29.0
+- type: replace
+  path: /releases/name=windows-utilities?
   value:
     name: windows-utilities
-    sha1: 7886ffd43b84d4eced06560ba601ce1eb97c6616
-    url: https://bosh.io/d/github.com/cloudfoundry-incubator/windows-utilities-release?v=0.14.0
-    version: 0.14.0
+    sha1: 52f489fe0806ee8915f5613f79c9173773871e8b
+    url: https://bosh.io/d/github.com/cloudfoundry-incubator/windows-utilities-release?v=0.20.0
+    version: 0.20.0

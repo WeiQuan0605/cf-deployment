@@ -215,25 +215,13 @@ For details, see the [Experimental Ops-file README](operations/experimental/READ
 "Test" ops-files are configurations
 that we run in our testing pipeline
 to enable certain features.
-We include them in the public repository
-(rather than in our private CI repositories)
-for a few reasons,
-depending on the particular ops-file.
-
-Some files are included
-because we suspect that the configurations will be commonly needed
-but not easily generalized.
-For example,
-`add-persistent-isolation-segment.yml` shows how a deployer can add an isolated Diego cell,
-but the ops-file is hard to apply repeatably.
-In this case, the ops-file is an example.
 
 #### [Backup and Restore](operations/backup-and-restore)
 Contains all the ops files utilized to enable and configure [BOSH Backup and Restore](https://github.com/cloudfoundry-incubator/bosh-backup-and-restore) (BBR).
 BBR is a CLI utility for orchestrating the backup and restore of [BOSH](https://bosh.io/) deployments and BOSH directors. It orchestrates triggering the backup or restore process on the deployment or director, and transfers the backup artifact to and from the deployment or director.
 
 ## <a name='ci'></a>CI
-The [ci](https://release-integration.ci.cf-app.com/teams/main/pipelines/cf-deployment) for `cf-deployment`
+The [ci](https://concourse.wg-ard.ci.cloudfoundry.org) for `cf-deployment`
 automatically bumps to the latest versions of its component releases on the `develop` branch.
 These bumps, along with any other changes made to `develop`, are deployed to a single long-running environment
 and tested with CATs before being merged to main if CATs goes green.
@@ -243,9 +231,9 @@ so that users can discover which version of CATs to run against their deployment
 For example, if you've deployed cf-deployment v6.10.0,
 check out the `cf6.10` branch in cf-acceptance-tests to run CATs.
 
-The configuration for our pipeline can be found [here](https://github.com/cloudfoundry/runtime-ci/blob/main/pipelines/cf-deployment.yml).
+The configuration for our pipeline can be found [here](https://github.com/cloudfoundry/cf-deployment/blob/develop/ci/pipelines/cf-deployment.yml).
 
-[cf-deployment-concourse-url]: https://release-integration.ci.cf-app.com/teams/main/pipelines/cf-deployment
+[cf-deployment-concourse-url]: https://concourse.wg-ard.ci.cloudfoundry.org
 
 ## <a name='vars-store'></a>Migrating from Vars Store to CredHub
 CredHub is default as of cf-deployment release v
@@ -255,3 +243,4 @@ We have a [utility](https://github.com/ishustava/migrator) to help you migrate.
 ## <a name='migrating'></a>Can I Transition from `cf-release`?
 CF-Deployment replaces the [manifest generation scripts in cf-release][cf-release-url] which have been deprecated and are no longer supported by the Release Integration team.
 Although the team is no longer working on or supporting migrations from `cf-release` to `cf-deployment`, you can still find the tooling and documentation in the [cf-deployment-transition repo](https://github.com/cloudfoundry/cf-deployment-transition).
+

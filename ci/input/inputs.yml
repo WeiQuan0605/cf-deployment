@@ -11,10 +11,8 @@ baseReleases:
   repository: cloudfoundry/cf-networking-release
 - name: cf-smoke-tests
   repository: cloudfoundry/cf-smoke-tests-release
-- name: cf-syslog-drain
-  repository: cloudfoundry/cf-syslog-drain-release
-- name: cflinuxfs3
-  repository: cloudfoundry/cflinuxfs3-release
+- name: cflinuxfs4
+  repository: cloudfoundry/cflinuxfs4-release
 - name: diego
   repository: cloudfoundry/diego-release
 - name: garden-runc
@@ -28,7 +26,7 @@ baseReleases:
 - name: nats
   repository: cloudfoundry/nats-release
 - name: pxc
-  repository: cloudfoundry-incubator/pxc-release
+  repository: cloudfoundry/pxc-release
 - name: routing
   repository: cloudfoundry/routing-release
 - name: silk
@@ -41,8 +39,6 @@ baseReleases:
   repository: pivotal-cf/credhub-release
 - name: cf-cli
   repository: bosh-packages/cf-cli-release
-- name: metrics-discovery
-  repository: cloudfoundry/metrics-discovery-release
 
 buildpackReleases:
 - name: binary-buildpack
@@ -71,8 +67,8 @@ buildpackReleases:
 opsReleases:
 - name: backup-and-restore-sdk
   repository: cloudfoundry-incubator/backup-and-restore-sdk-release
-- name: cf-app-sd
-  repository: cloudfoundry/cf-app-sd-release
+- name: cflinuxfs4-compat
+  repository: cloudfoundry/cflinuxfs4-compat-release
 - name: haproxy
   repository: cloudfoundry-incubator/haproxy-boshrelease
   varsFiles: "environments/test/pre-dev/haproxy-vars.yml"
@@ -95,12 +91,13 @@ opsReleases:
 - name: hwc-buildpack
   repository: cloudfoundry-incubator/hwc-buildpack-release
   requiredOpsFiles:
-    - operations/use-online-windows2019fs.yml
+  - operations/use-online-windows2019fs.yml
   prependOpsFileToList: true
 - name: windows-utilities
   repository: cloudfoundry-incubator/windows-utilities-release
-- name: garden-windows
-  repository: cloudfoundry-incubator/garden-windows-bosh-release
+  requiredOpsFiles:
+  - operations/use-online-windows2019fs.yml
+  prependOpsFileToList: true
 - name: winc
   repository: cloudfoundry-incubator/winc-release
   requiredOpsFiles:
@@ -123,6 +120,9 @@ opsReleases:
   requiredOpsFiles:
   - operations/windows2019-cell.yml
   - operations/use-online-windows2019fs.yml
+- name: otel-collector
+  repository: cloudfoundry/otel-collector-release
+  varsFiles: "operations/experimental/example-vars-files/vars-override-otel-collector-exporters.yml"
 
 untestedOpsReleases:
 - name: datadog-firehose-nozzle
@@ -131,6 +131,7 @@ untestedOpsReleases:
 
 windowsStemcells:
 - name: windows2019
+  stack: windows2019
   opsFile: windows2019-cell.yml
   opsFileDir: operations
 
